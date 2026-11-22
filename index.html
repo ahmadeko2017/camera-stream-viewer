@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Antarmuka Pemantau IP Camera Mandiri Berbasis HTML5 dan Snapshot Fallback">
+  <title>IP Camera Monitor — Surveillance Console</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Skrip Hls.js opsional untuk low-latency stream; fallback otomatis ke snapshot jika offline -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <!-- Header Konsol Pemantau -->
+  <header class="header-bar" role="banner">
+    <div class="header-title-group">
+      <h1>Konsol Pemantau IP Camera</h1>
+      <p class="header-subtitle">Pemantauan Video Real-Time &amp; Snapshot Fallback Mandiri</p>
+    </div>
+    <div class="header-status-group" aria-label="Status Koneksi Kamera">
+      <span id="targetIpBadge" class="badge">IP: 192.168.18.122:80</span>
+      <span id="connectionStatusPill" class="status-pill status-offline" role="status">OFFLINE</span>
+    </div>
+  </header>
+
+  <!-- Konten Utama: Player dan Informasi -->
+  <main class="main-grid" role="main">
+    <!-- Area Pemutar Video -->
+    <section class="player-section" aria-label="Pemutar Video Kamera">
+      <div id="playerContainer" class="player-container" tabindex="0" aria-label="Layar Tampilan Kamera">
+        <!-- OSD On-Screen Display -->
+        <div class="player-osd" aria-hidden="true">
+          <div class="osd-live-indicator">
+            <span class="live-dot"></span>
+            <span id="osdStreamMode">MAIN (1080p)</span>
+          </div>
+          <div class="osd-clock-badge">
+            <span id="osdClock">--:--:--</span>
+          </div>
+        </div>
+
+        <!-- Elemen Video HTML5 (HLS / Native) -->
+        <video id="videoPlayer" class="video-frame hidden" autoplay muted playsinline aria-label="Video Stream"></video>
+
+        <!-- Elemen Snapshot JPEG Fallback -->
+        <img id="snapshotPlayer" class="snapshot-frame hidden" alt="Tampilan Snapshot IP Camera" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'%3E%3Crect width='100%25' height='100%25' fill='%23070a10'/%3E%3C/svg%3E">
+
+        <!-- Overlay Status (Loading & Offline) -->
+        <div id="playerOverlay" class="player-overlay" role="alert">
+          <div class="overlay-spinner" aria-hidden="true"></div>
+          <p class="overlay-text">Menghubungkan ke IP Camera...</p>
+        </div>
+      </div>
+
+      <!-- Bilah Kontrol Pemutar -->
+      <nav class="player-toolbar" aria-label="Kontrol Pemutar">
+        <div class="toolbar-group">
+          <button id="playPauseBtn" class="btn btn-primary" type="button" aria-label="Jeda atau Lanjutkan Pemantauan">Jeda Pantau</button>
+          <button id="streamMainBtn" class="btn btn-active" type="button" aria-label="Pilih Main Stream 1080p">Main 1080p</button>
+          <button id="streamSubBtn" class="btn" type="button" aria-label="Pilih Sub Stream 360p">Sub 360p</button>
+        </div>
+
+        <div class="toolbar-group">
+          <label for="aspectRatioSelect" class="form-label hidden">Rasio Aspek</label>
+          <select id="aspectRatioSelect" class="select-input" aria-label="Pilihan Rasio Aspek Tampilan">
+            <option value="16/9">Rasio: 16:9</option>
+            <option value="contain">Rasio: Pas (Contain)</option>
+            <option value="cover">Rasio: Penuh (Stretch)</option>
+          </select>
+
+          <button id="fullscreenBtn" class="btn" type="button" aria-label="Beralih ke Layar Penuh">Layar Penuh [F]</button>
+        </div>
+      </nav>
+    </section>
+
+    <!-- Sidebar Informasi RTSP & Diagnostik -->
+    <aside class="sidebar-section" aria-label="Informasi dan Diagnostik">
+      <!-- Kartu URL RTSP untuk VLC/OBS -->
+      <section class="card" aria-labelledby="rtspCardTitle">
+        <div class="card-title" id="rtspCardTitle">
+          <span>Integrasi RTSP Eksternal</span>
+          <button id="toggleMaskBtn" class="btn" type="button" style="font-size: 0.72rem; padding: 0.2rem 0.5rem;">Tampilkan Sandi</button>
+        </div>
+
+        <div class="rtsp-block">
+          <span class="rtsp-label">Main Stream (1080p) — Untuk VLC / OBS:</span>
+          <div class="rtsp-input-group">
+            <div id="mainRtspDisplay" class="rtsp-code-box" tabindex="0">rtsp://admin:******@192.168.18.122:554/ch0_0.h264</div>
+            <button id="copyMainRtspBtn" class="btn" type="button" aria-label="Salin URL Main Stream RTSP">Salin</button>
+          </div>
+        </div>
+
+        <div class="rtsp-block">
+          <span class="rtsp-label">Sub Stream (360p) — Untuk Bandwidth Rendah:</span>
+          <div class="rtsp-input-group">
+            <div id="subRtspDisplay" class="rtsp-code-box" tabindex="0">rtsp://admin:******@192.168.18.122:554/ch0_1.h264</div>
+            <button id="copySubRtspBtn" class="btn" type="button" aria-label="Salin URL Sub Stream RTSP">Salin</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Kartu Diagnostik & Metrik Kesehatan -->
+      <section class="card" aria-labelledby="diagCardTitle">
+        <h2 class="card-title" id="diagCardTitle">Metrik Diagnostik Stream</h2>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-label">Latensi (RTT)</div>
+            <div id="statLatency" class="stat-value">-- ms</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Frame Rate</div>
+            <div id="statFps" class="stat-value">-- FPS</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Uptime</div>
+            <div id="statUptime" class="stat-value">00:00:00</div>
+          </div>
+        </div>
+
+        <h3 class="stat-label" style="margin-bottom: 0.35rem;">Riwayat Kejadian Sistem:</h3>
+        <ul id="logHistoryList" class="log-list" aria-label="Log Kejadian Sistem">
+          <li class="log-item"><span class="log-time">[--:--:--]</span> Menginisialisasi konsol...</li>
+        </ul>
+      </section>
+    </aside>
+  </main>
+
+  <!-- Panel Formulir Konfigurasi Kamera -->
+  <section class="card settings-section" aria-labelledby="settingsHeading">
+    <h2 class="card-title" id="settingsHeading">Konfigurasi Kamera Lokal (Tersimpan di Browser)</h2>
+    <form id="settingsForm">
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="cfgIp" class="form-label">Alamat IP Target:</label>
+          <input type="text" id="cfgIp" class="text-input" required value="192.168.18.122" autocomplete="off">
+        </div>
+
+        <div class="form-field">
+          <label for="cfgHttpPort" class="form-label">Port HTTP (Snapshot):</label>
+          <input type="number" id="cfgHttpPort" class="text-input" required value="80" min="1" max="65535">
+        </div>
+
+        <div class="form-field">
+          <label for="cfgRtspPort" class="form-label">Port RTSP:</label>
+          <input type="number" id="cfgRtspPort" class="text-input" required value="554" min="1" max="65535">
+        </div>
+
+        <div class="form-field">
+          <label for="cfgUser" class="form-label">Username:</label>
+          <input type="text" id="cfgUser" class="text-input" required value="admin" autocomplete="username">
+        </div>
+
+        <div class="form-field">
+          <label for="cfgPass" class="form-label">Password:</label>
+          <div style="display: flex; gap: 0.3rem;">
+            <input type="password" id="cfgPass" class="text-input" style="flex: 1;" required value="admin" autocomplete="current-password">
+            <button id="toggleFormPassBtn" type="button" class="btn" style="font-size: 0.75rem; padding: 0.3rem 0.5rem;">Lihat</button>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="cfgMainCh" class="form-label">Jalur Main Stream RTSP:</label>
+          <input type="text" id="cfgMainCh" class="text-input" required value="/ch0_0.h264">
+        </div>
+
+        <div class="form-field">
+          <label for="cfgSubCh" class="form-label">Jalur Sub Stream RTSP:</label>
+          <input type="text" id="cfgSubCh" class="text-input" required value="/ch0_1.h264">
+        </div>
+
+        <div class="form-field">
+          <label for="cfgSnapshot" class="form-label">Jalur Snapshot HTTP:</label>
+          <input type="text" id="cfgSnapshot" class="text-input" required value="/snapshot.jpg">
+        </div>
+
+        <div class="form-field">
+          <label for="cfgHls" class="form-label">Jalur/URL Stream HLS (Opsional):</label>
+          <input type="text" id="cfgHls" class="text-input" placeholder="contoh: http://localhost:8888/live.m3u8">
+        </div>
+
+        <div class="form-field">
+          <label for="cfgPollInterval" class="form-label">Interval Polling Snapshot (ms):</label>
+          <select id="cfgPollInterval" class="select-input">
+            <option value="500">500 ms (2 FPS)</option>
+            <option value="1000" selected>1000 ms (1 FPS)</option>
+            <option value="2000">2000 ms (0.5 FPS)</option>
+            <option value="5000">5000 ms (Hemat Jaringan)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button id="resetSettingsBtn" type="button" class="btn">Kembalikan Default</button>
+        <button id="saveSettingsBtn" type="submit" class="btn btn-active">Simpan Perubahan</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Wadah Notifikasi Toast -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+</body>
+</html>
