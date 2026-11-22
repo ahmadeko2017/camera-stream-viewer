@@ -9,12 +9,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
+from pathlib import Path
 
 from app.config import settings
 from app.streamer import CameraStreamer
 import app.camera_client as cam
 import app.talk_service as talk
+import app.storage_service as storage
+from app.recorder_service import recorder
 import app.models as m
 
 streamer = CameraStreamer()
@@ -24,7 +27,10 @@ streamer = CameraStreamer()
 async def lifespan(app: FastAPI):
     """Mengelola siklus hidup inisialisasi dan cleanup background streamer."""
     streamer.start()
+    recorder.set_frame_getter(streamer.get_latest_frame)
     yield
+    if recorder.get_status()["is_recording"]:
+        recorder.stop_recording()
     streamer.stop()
 
 
@@ -168,6 +174,64 @@ def post_reboot():
 def get_system_info():
     """Mengambil informasi hardware, firmware, dan jaringan kamera."""
     return cam.get_camera_info()
+
+
+@app.get("/api/storage/status")
+def get_storage_status():
+    """Mengambil status MicroSD kamera dan kapasitas hard disk lokal."""
+    return {
+        "camera_sd": storage.get_camera_sd_info(),
+        "local_disk": storage.get_local_disk_info(),
+        "recorder": recorder.get_status(),
+    }
+
+
+@app.post("/api/storage/format")
+def post_format_camera_sd():
+    """Memicu proses format MicroSD fisik pada kamera."""
+    return storage.format_camera_sd()
+
+
+@app.post("/api/record/start")
+def post_record_start():
+    """Memulai perekaman video MP4 lokal di server gateway."""
+    return recorder.start_recording()
+
+
+@app.post("/api/record/stop")
+def post_record_stop():
+    """Menghentikan sesi perekaman video lokal."""
+    return recorder.stop_recording()
+
+
+@app.get("/api/record/status")
+def get_record_status():
+    """Melihat status aktifitas perekaman lokal."""
+    return recorder.get_status()
+
+
+@app.get("/api/recordings")
+def get_recordings_list():
+    """Mengambil daftar seluruh file rekaman video lokal."""
+    return recorder.list_recordings()
+
+
+@app.get("/api/recordings/{filename}")
+def get_recording_file(filename: str):
+    """Menyajikan file MP4 rekaman video untuk diputar atau diunduh."""
+    target = (Path("recordings") / filename).resolve()
+    if target.parent != Path("recordings").resolve() or not target.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "File rekaman tidak ditemukan")
+    return FileResponse(target, media_type="video/mp4", filename=filename)
+
+
+@app.delete("/api/recordings/{filename}")
+def delete_recording_file(filename: str):
+    """Menghapus file rekaman lokal."""
+    success = recorder.delete_recording(filename)
+    if not success:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Gagal menghapus rekaman")
+    return {"status": "deleted", "filename": filename}
 
 
 CLIENT_DIST = os.path.abspath(

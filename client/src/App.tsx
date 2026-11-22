@@ -4,6 +4,8 @@ import { PtzPad } from "@/components/PtzPad";
 import { PresetManager } from "@/components/PresetManager";
 import { ImageTuner } from "@/components/ImageTuner";
 import { AudioConsole } from "@/components/AudioConsole";
+import { StorageManagerCard } from "@/components/StorageManagerCard";
+import { PlaybackGalleryModal } from "@/components/PlaybackGalleryModal";
 import { SystemCard } from "@/components/SystemCard";
 import { api } from "@/lib/api";
 import { ShieldCheck, Video } from "lucide-react";
@@ -11,6 +13,7 @@ import { ShieldCheck, Video } from "lucide-react";
 export function App() {
   const [cameraIp, setCameraIp] = useState("192.168.18.122");
   const [connected, setConnected] = useState(true);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
 
   useEffect(() => {
     const fetchStatus = () => {
@@ -58,6 +61,7 @@ export function App() {
       <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 space-y-6">
           <LiveView cameraIp={cameraIp} connected={connected} />
+          <StorageManagerCard onOpenGallery={() => setIsGalleryOpen(true)} />
           <SystemCard />
         </div>
 
@@ -68,6 +72,11 @@ export function App() {
           <ImageTuner />
         </div>
       </main>
+
+      <PlaybackGalleryModal
+        isOpen={isGalleryOpen}
+        onClose={() => setIsGalleryOpen(false)}
+      />
 
       <footer className="border-t border-slate-800/80 py-3 px-6 text-center text-xs text-slate-500">
         IP Camera Studio Portal &bull; Dikembangkan dengan Vite, React & shadcn/ui &bull; Bebas Plugin Flash

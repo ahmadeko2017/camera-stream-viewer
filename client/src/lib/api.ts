@@ -57,4 +57,34 @@ export const api = {
     }
     return response.json();
   },
+  getStorageStatus: () =>
+    request<{
+      camera_sd: {
+        sd_detected: boolean;
+        sd_status_code: string;
+        format_status_code: string;
+        total_capacity: string;
+        available_capacity: string;
+        status_label: string;
+      };
+      local_disk: {
+        total_gb: number;
+        used_gb: number;
+        free_gb: number;
+        free_percent: number;
+      };
+      recorder: {
+        is_recording: boolean;
+        current_filename: string | null;
+        duration_sec: number;
+      };
+    }>("/api/storage/status"),
+  formatSdCard: () => request("/api/storage/format", { method: "POST" }),
+  startRecording: () => request<{ status: string; filename: string }>("/api/record/start", { method: "POST" }),
+  stopRecording: () => request<{ status: string; filename: string; duration_sec: number; size_kb: number }>("/api/record/stop", { method: "POST" }),
+  getRecordStatus: () => request<{ is_recording: boolean; current_filename: string | null; duration_sec: number }>("/api/record/status"),
+  getRecordings: () => request<Array<{ filename: string; size_mb: number; created_at: string }>>("/api/recordings"),
+  deleteRecording: (filename: string) => request(`/api/recordings/${filename}`, { method: "DELETE" }),
+  getRecordingUrl: (filename: string) => `${BASE_URL}/api/recordings/${filename}`,
+  getSnapshotUrl: () => `${BASE_URL}/snapshot?t=${Date.now()}`,
 };

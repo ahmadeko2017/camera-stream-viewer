@@ -99,3 +99,44 @@ def test_should_update_orientation_when_valid_flip_power_sent():
     assert response.status_code == 200
 
 
+def test_should_return_storage_status_with_camera_sd_and_local_disk():
+    # Arrange & Act
+    response = client.get("/api/storage/status")
+
+    # Assert
+    assert response.status_code == 200
+    data = response.json()
+    assert "camera_sd" in data
+    assert "local_disk" in data
+    assert "recorder" in data
+    assert "sd_detected" in data["camera_sd"]
+    assert "free_gb" in data["local_disk"]
+
+
+def test_should_manage_local_recording_lifecycle():
+    # 1. Start recording
+    res_start = client.post("/api/record/start")
+    assert res_start.status_code == 200
+    assert res_start.json()["status"] in ["recording_started", "already_recording"]
+
+    # 2. Check recording status
+    res_status = client.get("/api/record/status")
+    assert res_status.status_code == 200
+    assert res_status.json()["is_recording"] is True
+
+    # 3. Stop recording
+    res_stop = client.post("/api/record/stop")
+    assert res_stop.status_code == 200
+    assert res_stop.json()["status"] == "recording_stopped"
+
+
+def test_should_return_recordings_list():
+    # Arrange & Act
+    response = client.get("/api/recordings")
+
+    # Assert
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
+
