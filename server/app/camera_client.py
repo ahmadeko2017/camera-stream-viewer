@@ -78,6 +78,16 @@ def reboot_camera() -> dict:
     return post_cgi("cmd.cgi", "opType=set&cmd=reboot&forcesave=1")
 
 
+def set_flip_power(flip: int | None = None, power: int | None = None) -> dict:
+    """Mengatur rotasi cermin (flip) dan frekuensi daya anti-flicker kamera."""
+    results = {}
+    if flip is not None:
+        results["flip"] = post_cgi("displaycfg.cgi", f"opType=set&flip={flip}")
+    if power is not None:
+        results["power"] = post_cgi("displaycfg.cgi", f"opType=set&power={power}")
+    return results
+
+
 def get_camera_info() -> dict:
     """Mengambil informasi perangkat dan status jaringan kamera."""
     dev = post_cgi("getdeviceinfo.cgi", "opType=get")

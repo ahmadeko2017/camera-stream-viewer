@@ -87,3 +87,15 @@ def test_should_process_talk_audio_when_pcm_payload_sent():
     data = response.json()
     assert data["status"] in ["success", "buffered"]
 
+
+def test_should_update_orientation_when_valid_flip_power_sent():
+    # Arrange
+    payload = {"flip": 0, "power": 0}
+
+    # Act
+    response = client.post("/api/image/orientation", json=payload)
+
+    # Assert
+    assert response.status_code == 200
+
+

@@ -51,3 +51,10 @@ class MotionAlarmRequest(BaseModel):
     email: int = Field(0, ge=0, le=1)
     capture: int = Field(0, ge=0, le=1)
     videorecord: int = Field(0, ge=0, le=1)
+
+
+class FlipPowerRequest(BaseModel):
+    """Payload untuk orientasi citra (flip) dan frekuensi daya anti-flicker."""
+    flip: Optional[int] = Field(None, ge=0, le=3, description="0=Normal, 1=UpDown, 2=LeftRight, 3=All")
+    power: Optional[int] = Field(None, ge=0, le=2, description="0=50Hz, 1=60Hz, 2=Outdoor")
+

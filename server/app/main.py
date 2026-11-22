@@ -103,6 +103,12 @@ def post_image(req: m.ImageAttrRequest):
     return cam.set_image_attrs(req.brightness, req.contrast, req.saturation)
 
 
+@app.post("/api/image/orientation")
+def post_image_orientation(req: m.FlipPowerRequest):
+    """Mengatur rotasi cermin (flip) dan frekuensi daya listrik kamera."""
+    return cam.set_flip_power(req.flip, req.power)
+
+
 @app.post("/api/audio")
 def post_audio(req: m.AudioVolumeRequest):
     """Mengatur sensitivitas mikrofon dan volume speaker."""

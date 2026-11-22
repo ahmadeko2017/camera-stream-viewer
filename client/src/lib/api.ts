@@ -27,6 +27,8 @@ export const api = {
   sendPtz: (command: string) => request("/api/ptz", { method: "POST", body: JSON.stringify({ command }) }),
   setImage: (brightness: number, contrast: number, saturation: number) =>
     request("/api/image", { method: "POST", body: JSON.stringify({ brightness, contrast, saturation }) }),
+  setOrientation: (flip?: number, power?: number) =>
+    request("/api/image/orientation", { method: "POST", body: JSON.stringify({ flip, power }) }),
   setAudio: (voice: number, speaker: number) =>
     request("/api/audio", { method: "POST", body: JSON.stringify({ voice, speaker }) }),
   setNightVision: (mode: number) =>
