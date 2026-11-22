@@ -1,13 +1,12 @@
 """
 main.py — FastAPI Application Gateway untuk IP Camera Studio
-Menyediakan REST API, MJPEG video feed, dan static files handler.
-Menggunakan modern Lifespan Context Manager.
+Menyediakan REST API, MJPEG video feed, Push-to-Talk audio endpoint, dan static files.
 """
 
 import os
 import time
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Response, HTTPException, status
+from fastapi import FastAPI, Response, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
@@ -15,6 +14,7 @@ from fastapi.responses import StreamingResponse
 from app.config import settings
 from app.streamer import CameraStreamer
 import app.camera_client as cam
+import app.talk_service as talk
 import app.models as m
 
 streamer = CameraStreamer()
@@ -34,7 +34,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Konfigurasi CORS agar frontend Vite (:5173) dapat berkomunikasi lancar
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -108,6 +107,16 @@ def post_image(req: m.ImageAttrRequest):
 def post_audio(req: m.AudioVolumeRequest):
     """Mengatur sensitivitas mikrofon dan volume speaker."""
     return cam.set_audio_volume(req.voice, req.speaker)
+
+
+@app.post("/api/talk")
+async def post_talk_audio(request: Request):
+    """Menerima rekaman audio dari mic browser untuk disalurkan ke speaker kamera."""
+    body = await request.body()
+    if not body:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Payload audio kosong")
+    alaw_data = talk.encode_pcm_to_alaw(body)
+    return talk.send_audio_chunk_to_camera(alaw_data)
 
 
 @app.post("/api/nightvision")

@@ -43,4 +43,16 @@ export const api = {
   syncTime: () => request("/api/system/timesync", { method: "POST" }),
   reboot: () => request("/api/system/reboot", { method: "POST" }),
   getInfo: () => request<{ device: string; flow: string }>("/api/system/info"),
+  sendTalkAudio: async (audioData: ArrayBuffer | Blob): Promise<{ status: string; bytes_sent?: number; detail?: string }> => {
+    const response = await fetch(`${BASE_URL}/api/talk`, {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream" },
+      body: audioData,
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+    return response.json();
+  },
 };

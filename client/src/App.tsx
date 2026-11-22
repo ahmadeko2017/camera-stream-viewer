@@ -13,12 +13,18 @@ export function App() {
   const [connected, setConnected] = useState(true);
 
   useEffect(() => {
-    api.getStatus()
-      .then((status) => {
-        setCameraIp(status.camera_ip);
-        setConnected(status.rtsp_connected);
-      })
-      .catch(() => setConnected(false));
+    const fetchStatus = () => {
+      api.getStatus()
+        .then((status) => {
+          setCameraIp(status.camera_ip);
+          setConnected(status.rtsp_connected);
+        })
+        .catch(() => setConnected(false));
+    };
+
+    fetchStatus();
+    const timer = setInterval(fetchStatus, 3000);
+    return () => clearInterval(timer);
   }, []);
 
   return (

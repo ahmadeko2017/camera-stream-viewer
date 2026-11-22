@@ -64,3 +64,26 @@ def test_should_return_422_when_audio_voice_out_of_range():
 
     # Assert
     assert response.status_code == 422
+
+
+def test_should_return_400_when_talk_payload_empty():
+    # Arrange: payload audio kosong
+    # Act
+    response = client.post("/api/talk", content=b"")
+
+    # Assert
+    assert response.status_code == 400
+
+
+def test_should_process_talk_audio_when_pcm_payload_sent():
+    # Arrange: payload 16-bit PCM (100 samples nol)
+    pcm_bytes = b"\x00\x00" * 100
+
+    # Act
+    response = client.post("/api/talk", content=pcm_bytes)
+
+    # Assert
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] in ["success", "buffered"]
+

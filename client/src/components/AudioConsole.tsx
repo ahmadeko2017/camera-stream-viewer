@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
+import { IntercomTalk } from "@/components/IntercomTalk";
 import { api } from "@/lib/api";
 import { Mic } from "lucide-react";
 
@@ -53,6 +54,8 @@ export function AudioConsole() {
           </div>
           {statusMsg && <span className="text-emerald-400">{statusMsg}</span>}
         </div>
+
+        <IntercomTalk />
       </CardContent>
     </Card>
   );
