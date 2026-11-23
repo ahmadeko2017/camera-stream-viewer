@@ -139,4 +139,40 @@ def test_should_return_recordings_list():
     assert isinstance(response.json(), list)
 
 
+def test_should_execute_ptz_step_and_stop_automatically():
+    # Arrange
+    payload = {"command": "left", "duration_ms": 150}
+
+    # Act
+    response = client.post("/api/ptz/step", json=payload)
+
+    # Assert
+    assert response.status_code == 200
+    assert response.json()["status"] in [200, 502]
+
+
+def test_should_return_400_when_invalid_ptz_step_command():
+    # Arrange
+    payload = {"command": "invalid_dir", "duration_ms": 200}
+
+    # Act
+    response = client.post("/api/ptz/step", json=payload)
+
+    # Assert
+    assert response.status_code == 400
+
+
+def test_should_have_audio_feed_endpoint():
+    # Arrange & Act: stream chunk pertama audio wav
+    with client.stream("GET", "/audio_feed") as response:
+        assert response.status_code == 200
+        assert "audio/wav" in response.headers.get("content-type", "")
+        # Baca 44 byte pertama (WAV RIFF header)
+        first_chunk = next(response.iter_bytes())
+        assert len(first_chunk) >= 44
+        assert first_chunk[:4] == b"RIFF"
+        assert first_chunk[8:12] == b"WAVE"
+
+
+
 

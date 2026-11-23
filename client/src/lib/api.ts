@@ -25,6 +25,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 export const api = {
   getStatus: () => request<{ gateway_active: boolean; camera_ip: string; rtsp_connected: boolean }>("/api/status"),
   sendPtz: (command: string) => request("/api/ptz", { method: "POST", body: JSON.stringify({ command }) }),
+  sendPtzStep: (command: string, duration_ms: number = 600) =>
+    request("/api/ptz/step", { method: "POST", body: JSON.stringify({ command, duration_ms }) }),
   setImage: (brightness: number, contrast: number, saturation: number) =>
     request("/api/image", { method: "POST", body: JSON.stringify({ brightness, contrast, saturation }) }),
   setOrientation: (flip?: number, power?: number) =>
@@ -87,4 +89,5 @@ export const api = {
   deleteRecording: (filename: string) => request(`/api/recordings/${filename}`, { method: "DELETE" }),
   getRecordingUrl: (filename: string) => `${BASE_URL}/api/recordings/${filename}`,
   getSnapshotUrl: () => `${BASE_URL}/snapshot?t=${Date.now()}`,
+  getAudioFeedUrl: () => `${BASE_URL}/audio_feed`,
 };

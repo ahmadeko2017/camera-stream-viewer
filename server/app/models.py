@@ -12,6 +12,13 @@ class PtzRequest(BaseModel):
     command: str = Field(..., description="Nama perintah: top, down, left, right, stop, dll.")
 
 
+class PtzStepRequest(BaseModel):
+    """Payload untuk perintah PTZ per langkah terukur."""
+    command: str = Field(..., description="Nama perintah: top, down, left, right, lefttop, dll.")
+    duration_ms: int = Field(600, ge=100, le=3000, description="Durasi pergerakan motor dalam milidetik")
+
+
+
 class ImageAttrRequest(BaseModel):
     """Payload untuk pengaturan citra sensor."""
     brightness: int = Field(50, ge=0, le=100)

@@ -5,6 +5,7 @@ Menyediakan REST API, MJPEG video feed, Push-to-Talk audio endpoint, dan static 
 
 import os
 import time
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -85,6 +86,15 @@ def get_video_feed():
     )
 
 
+@app.get("/audio_feed")
+def get_audio_feed():
+    """Menyajikan live stream audio WAV mikrofon kamera secara realtime."""
+    return StreamingResponse(
+        streamer.generate_audio_stream(),
+        media_type="audio/wav",
+    )
+
+
 @app.get("/snapshot")
 def get_snapshot():
     """Mengambil snapshot satu frame 1080p beresolusi penuh."""
@@ -96,11 +106,26 @@ def get_snapshot():
 
 @app.post("/api/ptz")
 def post_ptz(req: m.PtzRequest):
-    """Menjalankan instruksi motorik PTZ."""
+    """Menjalankan instruksi motorik PTZ berkelanjutan."""
     code = PTZ_MAP.get(req.command.lower())
     if code is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Perintah PTZ tidak valid")
     return cam.send_ptz(code)
+
+
+@app.post("/api/ptz/step")
+async def post_ptz_step(req: m.PtzStepRequest):
+    """Menggerakkan motor PTZ satu langkah terukur (durasi ms) lalu berhenti otomatis."""
+    code = PTZ_MAP.get(req.command.lower())
+    if code is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Perintah PTZ tidak valid")
+
+    # Mulai pergerakan
+    cam.send_ptz(code)
+    # Tunggu pergerakan motor sesuai durasi langkah
+    await asyncio.sleep(req.duration_ms / 1000.0)
+    # Hentikan motor secara otomatis
+    return cam.send_ptz(PTZ_MAP["stop"])
 
 
 @app.post("/api/image")
