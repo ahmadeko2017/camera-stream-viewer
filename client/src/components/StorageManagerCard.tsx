@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
-import { HardDrive, AlertTriangle, RefreshCw, Film, Trash2 } from "lucide-react";
+import { HardDrive, AlertTriangle, RefreshCw, Film, Trash2, CheckCircle2 } from "lucide-react";
 
 interface StorageManagerCardProps {
   onOpenGallery: () => void;
@@ -35,7 +35,7 @@ export function StorageManagerCard({ onOpenGallery }: StorageManagerCardProps) {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 5000);
+    const interval = setInterval(fetchStatus, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -55,6 +55,8 @@ export function StorageManagerCard({ onOpenGallery }: StorageManagerCardProps) {
       });
   };
 
+  const isSdReady = storageData.camera_sd.sd_detected;
+
   return (
     <Card>
       <CardHeader>
@@ -70,42 +72,56 @@ export function StorageManagerCard({ onOpenGallery }: StorageManagerCardProps) {
       </CardHeader>
       <CardContent className="space-y-4 text-xs">
         {/* Status MicroSD Kamera Fisik */}
-        <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800 space-y-2">
+        <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800 space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-slate-300">MicroSD Fisik Kamera:</span>
             <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
-              storageData.camera_sd.sd_detected
+              isSdReady
                 ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
                 : "bg-rose-500/20 text-rose-400 border-rose-500/30"
             }`}>
-              {storageData.camera_sd.status_label}
+              {isSdReady ? "✅ Terdeteksi & Siap Pakai" : storageData.camera_sd.status_label}
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-slate-400 text-[11px]">
-            <div>Kapasitas: <span className="text-white font-mono">{storageData.camera_sd.total_capacity}</span></div>
+            <div>Total: <span className="text-white font-mono">{storageData.camera_sd.total_capacity}</span></div>
             <div>Tersedia: <span className="text-white font-mono">{storageData.camera_sd.available_capacity}</span></div>
           </div>
 
-          {/* Dialog Konfirmasi Format */}
+          {/* Banner Keterangan Status Kartu */}
+          {isSdReady ? (
+            <div className="p-2 rounded bg-emerald-950/30 border border-emerald-800/40 text-emerald-300 text-[11px] flex items-start gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+              <span>
+                Kartu MicroSD telah terdeteksi sempurna dan berformat FAT32. <strong>Tidak perlu diformat</strong> kecuali jika Anda ingin mengosongkan rekaman.
+              </span>
+            </div>
+          ) : (
+            <div className="p-2 rounded bg-amber-950/30 border border-amber-800/40 text-amber-300 text-[11px]">
+              Kartu belum terbaca. Pastikan MicroSD FAT32 terpasang rapat di slot kamera.
+            </div>
+          )}
+
+          {/* Pilihan Format Ulang Opsional */}
           {!confirmFormat ? (
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="w-full text-xs text-rose-400 border-rose-900/40 hover:bg-rose-950/30 gap-1.5"
+              className="w-full text-xs text-slate-400 hover:text-rose-400 hover:bg-rose-950/20 gap-1.5"
               onClick={() => setConfirmFormat(true)}
             >
-              <Trash2 className="w-3.5 h-3.5" /> Format MicroSD Kamera (FAT32)
+              <Trash2 className="w-3.5 h-3.5" /> Format Ulang Kartu (Opsional)
             </Button>
           ) : (
             <div className="p-2 rounded bg-rose-950/40 border border-rose-800/60 space-y-2">
               <div className="flex items-center gap-1.5 text-rose-300 text-[11px]">
                 <AlertTriangle className="w-3.5 h-3.5" />
-                <span>Format akan menghapus seluruh isi MicroSD! Lanjutkan?</span>
+                <span>Format ulang akan menghapus semua file di MicroSD. Lanjutkan?</span>
               </div>
               <div className="flex gap-2">
                 <Button size="sm" variant="destructive" className="flex-1 text-xs" disabled={loading} onClick={handleFormat}>
-                  {loading ? "Memformat..." : "Ya, Format"}
+                  {loading ? "Memformat..." : "Ya, Kosongkan Kartu"}
                 </Button>
                 <Button size="sm" variant="secondary" className="flex-1 text-xs" onClick={() => setConfirmFormat(false)}>
                   Batal
